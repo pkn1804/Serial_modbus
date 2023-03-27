@@ -1,15 +1,10 @@
 # ----------------------------------------------------------
-# author:	Patrick van der Krabben
-# filename:	showSensorData-v2.py
-# date:		2023-03-24
+# author:	PKN
+# filename:	showSensorData.py
 # info:		Python script to get data from serial
 # 			connected datalogger (OTT-radar) and modbus
 # 			(NKE - MoSens UV sensor) and display collected
 #			data in a graph.
-# Changes:  Added 
-#           - UV parameter to graph
-#           - Plotly template parameter
-#           - Option to use test data
 # ----------------------------------------------------------
 
 import serial, datetime, time, re, random
