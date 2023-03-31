@@ -1,7 +1,6 @@
 # ----------------------------------------------------------
 # author:	PKN
 # filename:	showSensorData.py
-# date:		2023-03-30
 # info:		Python script to get data from serial
 # 			connected datalogger (OTT-radar) and modbus
 # 			(NKE - MoSens UV sensor) and display collected
@@ -19,7 +18,7 @@ from dash import Dash, dcc, html, Input, Output
 import minimalmodbus
 
 # SETTINGS
-use_test_data = True
+use_test_data = False
 debugMode_data = False
 debugMode_NKE = False
 debugMode_plot = False
@@ -32,10 +31,14 @@ pd.options.plotting.backend = 'plotly'
 plotly_template = 'plotly_white' # "plotly", "plotly_white", "plotly_dark", "ggplot2", "seaborn", "simple_white", "none"
 max_plotdata = 50 # max measurements to show 
 refreshrate = 5000, # in milliseconds
-plotcols = ('time','distance','temperature','Ec','Uv')
-x_axis = 'time'
-y_axis1 = ['temperature','Ec','Uv']
-y_axis2 = ['distance']
+fig_height = 600
+fig_width = 800
+scale_distance = [-20, 20]
+scale_Uv = [0, 1.5]
+scale_temperature = [0, 30]
+scale_Ec = [0, 6]
+
+# INIT
 plotdata = [[datetime.datetime.now(),0.00,0.00,0.00,00.00]] # create startpoint for plot
 
 # Modbus
@@ -53,7 +56,7 @@ if use_test_data == False:
 class dataObject():
     def __init__(self):
         self.datetime = datetime.datetime.now()
-        self.distance = (OTT_offset - get_distance())
+        self.distance = (get_distance() - OTT_offset)
         gt_data = get_NKE_data()
         self.temperature = recalc_output(gt_data[4],gt_data[5])
         self.Ec = recalc_output(gt_data[2],gt_data[3])
@@ -62,27 +65,26 @@ class dataObject():
 class test_dataObject():
     def __init__(self):
         self.datetime = datetime.datetime.now()
-        self.distance = (OTT_offset - round(random.uniform(-20.00, 20.00),2))
+        self.distance = round(random.uniform(-20.00, 20.00),2)
         self.temperature = round(random.uniform(12.00, 23.00),2)
         self.Ec = round(random.uniform(0.00, 5.00),2)
-        self.Uv = round(random.uniform(0, 1))
+        self.Uv = round(random.randint(0, 1))
 
-def recalc_output(n,m):
+# minimalmodbus output is based on 2 bytes, NKE output = 4 bytes
+# recalculate output to show correct measurement values
+def recalc_output(n,m): 
     p=('{0:x}'.format(n))
     q=('{0:x}'.format(m))
-    z=p+q
-    if len(z) == 8:
-        return(convert(z))
+    r=p+q
+    if len(r) == 8:
+        i = int(r,16)
+        cp = pointer(c_int(i))
+        fp = cast(cp, POINTER(c_float))
+        if debugMode_data:
+            print(f'converted value= {fp.contents.value}' )
+        return fp.contents.value
     else:
         return(0.00)
-
-def convert(s):
-    i = int(s,16)
-    cp = pointer(c_int(i))
-    fp = cast(cp, POINTER(c_float))
-    if debugMode_data:
-        print(f'converted value=: {fp.contents.value}' )
-    return fp.contents.value
 
 def get_distance(): # Distance from Radar in cm.
     ser = serial.Serial(OTT_port, 9600, 8, 'N', 1, timeout=1)
@@ -99,7 +101,6 @@ def get_distance(): # Distance from Radar in cm.
                 P1 = P1
             if debugMode_data:
                 print(f'P1: {P1}')
-       #     serial.close()
             return P1
         
 def get_NKE_data():
@@ -122,14 +123,12 @@ app.layout = html.Div([
             'color': 'black'
         }
     ),
-            dcc.Interval(
-            id='interval-component',
-            interval=refreshrate ,
-            n_intervals=0
+        dcc.Interval(
+        id='interval-component',
+        interval=refreshrate ,
+        n_intervals=0
         ),
-        
-    dcc.Graph(id='graph'),
-
+        dcc.Graph(id='graph')
 ])
 
 # Define callback to update graph
@@ -151,7 +150,7 @@ def update_line_chart(sensorData):
         plotdata.append(newdata)
     
     fig = make_subplots(rows=2, cols=2, subplot_titles=('OTT-radar','NKE sensor - Uv','NKE sensor - temperatuur','NKE sensor - Ec')) #create subplots
-    df = pd.DataFrame(plotdata, columns = plotcols)
+    df = pd.DataFrame(plotdata, columns = ('time','distance','temperature','Ec','Uv'))
     fig.append_trace(go.Scatter(x=df['time'], y=df['distance'], name='waterhoogte'),row=1,col=1)
     fig.append_trace(go.Scatter(x=df['time'], y=df['Uv'], name='status Uv LED'),row=1,col=2)
     fig.append_trace(go.Scatter(x=df['time'], y=df['temperature'], name='water temperatuur'),row=2,col=1)
@@ -163,12 +162,12 @@ def update_line_chart(sensorData):
     fig.update_xaxes(title_text="tijd", row=2, col=2)
     
     # Update yaxis properties
-    fig.update_yaxes(title_text="cm (NAP)", range=[-20, 20], row=1, col=1)
-    fig.update_yaxes(title_text="status", range=[0, 1.5], row=1, col=2)
-    fig.update_yaxes(title_text="\N{DEGREE SIGN}C", range=[10, 30],row=2, col=1)
-    fig.update_yaxes(title_text="mS/cm", range=[0, 5], row=2, col=2)
+    fig.update_yaxes(title_text="cm (NAP)", range=scale_distance, row=1, col=1)
+    fig.update_yaxes(title_text="status", range=scale_Uv, row=1, col=2)
+    fig.update_yaxes(title_text="\N{DEGREE SIGN}C", range=scale_temperature,row=2, col=1)
+    fig.update_yaxes(title_text="mS/cm", range=scale_Ec, row=2, col=2)
     
-    fig.update_layout(height=600,width=800, template=plotly_template)
+    fig.update_layout(height=fig_height,width=fig_width, template=plotly_template)
    
     return fig     
 
