@@ -1,7 +1,6 @@
 # ----------------------------------------------------------
 # author:	PKN
 # filename:	showSensorData.py
-# date:		2023-03-30
 # info:		Python script to get data from serial
 # 			connected datalogger (OTT-radar) and modbus
 # 			(NKE - MoSens UV sensor) and display collected
