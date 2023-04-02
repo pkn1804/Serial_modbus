@@ -1,6 +1,7 @@
 # ----------------------------------------------------------
 # author:	PKN
 # filename:	showSensorData.py
+# date:		2023-03-30
 # info:		Python script to get data from serial
 # 			connected datalogger (OTT-radar) and modbus
 # 			(NKE - MoSens UV sensor) and display collected
@@ -129,10 +130,9 @@ app.layout = html.Div([
     html.Div([
         dcc.Dropdown(
             ["plotly", "plotly_white", "plotly_dark", "ggplot2", "seaborn", "simple_white"], 'plotly_white',
-            id='template',
+            id='template', clearable=False,
             style=dict(
                 width='120px',
-                display='inline-block',
             ),
         ),
         dcc.Dropdown(
@@ -140,10 +140,9 @@ app.layout = html.Div([
                 options=[
                     {'label': 'Sensor Data', 'value': 'Sensor'},
                     {'label': 'Demo Data', 'value': 'Demo'}
-                ], value= 'Sensor',
+                ], value= 'Sensor', clearable=False,
             style=dict(
                 width='120px',
-                display='inline-block',
             ),
         )
     ],
