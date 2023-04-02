@@ -1,6 +1,7 @@
 # ----------------------------------------------------------
 # author:	PKN
 # filename:	showSensorData.py
+# date:		2023-03-30
 # info:		Python script to get data from serial
 # 			connected datalogger (OTT-radar) and modbus
 # 			(NKE - MoSens UV sensor) and display collected
@@ -18,7 +19,7 @@ from dash import Dash, dcc, html, Input, Output
 import minimalmodbus
 
 # SETTINGS
-use_test_data = False
+use_test_data = True
 debugMode_data = False
 debugMode_NKE = False
 debugMode_plot = False
@@ -65,7 +66,7 @@ class dataObject():
 class test_dataObject():
     def __init__(self):
         self.datetime = datetime.datetime.now()
-        self.distance = round(random.uniform(-20.00, 20.00),2)
+        self.distance = round(random.uniform(-20.00, 20.00),2)-OTT_offset
         self.temperature = round(random.uniform(12.00, 23.00),2)
         self.Ec = round(random.uniform(0.00, 5.00),2)
         self.Uv = round(random.randint(0, 1))
@@ -119,25 +120,91 @@ app.layout = html.Div([
     html.H1(
         children='Sensor Data',
         style={
+            'text-indent': '10px',
             'textAlign': 'left',
-            'color': 'black'
-        }
+            'color': 'white',
+            'background-color': 'rgb(32, 85, 128)'
+        },
     ),
-        dcc.Interval(
-        id='interval-component',
-        interval=refreshrate ,
-        n_intervals=0
+    
+    html.Div([
+        dcc.Dropdown(
+            ["plotly", "plotly_white", "plotly_dark", "ggplot2", "seaborn", "simple_white"], 'plotly_white',
+            id='template',
+            style=dict(
+                width='120px',
+                display='inline-block',
+            ),
         ),
-        dcc.Graph(id='graph')
+        dcc.Dropdown(
+            id='kind_of_data', 
+                options=[
+                    {'label': 'Sensor Data', 'value': 'Sensor'},
+                    {'label': 'Demo Data', 'value': 'Demo'}
+                ], value= 'Sensor',
+            style=dict(
+                width='120px',
+                display='inline-block',
+            ),
+        )
+    ],
+        style=dict(display='flex')
+    ),
+
+    html.Br(),
+    html.Div([
+        " OTT-radar offset: ",
+        dcc.Input(id='offset_input', value=OTT_offset, type='number',
+            style=dict(
+            width='40px',
+            display='inline-block',
+            verticalAlign="middle",
+            ),
+        ),
+        " Port OTT-radar:  ",
+        dcc.Input(id='OTT_input', value=OTT_port, type='text', 
+            style=dict(
+            width='80px',
+            display='inline-block',
+            ),
+        ),
+        " Port NKE Mosens Uv: ",
+        dcc.Input(id='NKE_input', value=NKE_port, type='text',
+            style=dict(
+            width='80px',
+            display='inline-block',
+            verticalAlign="middle",
+            ),
+        ),
+    ]),
+
+    dcc.Interval(
+    id='interval-component',
+    interval=refreshrate ,
+    n_intervals=0
+    ),
+    dcc.Graph(id='graph')
 ])
 
 # Define callback to update graph
 @app.callback(
     Output('graph', 'figure'),
-    [Input('interval-component', 'n_intervals')]
+    Input('interval-component', 'n_intervals'),
+    Input(component_id='template', component_property='value'),
+    Input(component_id='offset_input', component_property='value'),
+    Input(component_id='OTT_input', component_property='value'),
+    Input(component_id='NKE_input', component_property='value'),
+    Input(component_id='kind_of_data', component_property='value')
 )
-def update_line_chart(sensorData):
-    print(sensorData)
+def update_line_chart(sensorData, template, offset_input, OTT_input, NKE_input, kind_of_data):
+    plotly_template = template
+    OTT_offset = offset_input
+    OTT_port = OTT_input
+    NKE_port = NKE_input
+    if kind_of_data == "Sensor":
+        use_test_data = False
+    else:
+        use_test_data = True
     if use_test_data == True:
         sensordata =  test_dataObject()
     else:
@@ -168,7 +235,7 @@ def update_line_chart(sensorData):
     fig.update_yaxes(title_text="mS/cm", range=scale_Ec, row=2, col=2)
     
     fig.update_layout(height=fig_height,width=fig_width, template=plotly_template)
-   
+    
     return fig     
 
 app.run_server(port = 8069, dev_tools_ui=True, debug=debugMode_plot,
