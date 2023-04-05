@@ -90,7 +90,7 @@ def recalc_output(n,m):
 def get_distance(): # Distance from Radar in cm.
     ser = serial.Serial(OTT_port, 9600, 8, 'N', 1, timeout=1)
     P1 = 9999
-    while P1 != 0 and P1 > 9999:
+    while P1 != 0 and P1 > 99999:
         output = ser.readline()
         output = output.decode('ascii')
         regresult = re.split(';', output)
